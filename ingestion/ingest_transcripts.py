@@ -23,6 +23,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
+# Add parent directory to path to import retail_ontology
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dotenv import load_dotenv
 import requests
 from pypdf import PdfReader
@@ -217,6 +220,7 @@ def ensure_collection(
             {"name": "concept_score", "dataType": ["number"]},
             {"name": "created_at", "dataType": ["date"]},
             {"name": "updated_at", "dataType": ["date"]},
+            {"name": "pdf_source_hash", "dataType": ["text"]},
         ],
     }
 
@@ -231,6 +235,40 @@ def ensure_collection(
 
     client.schema.create_class(schema)
     logger.info("Created collection %s", COLLECTION_NAME)
+
+
+def generate_pdf_source_hash(pdf_path: Path, metadata: Dict[str, Optional[str]]) -> str:
+    """Generate a unique hash for the PDF based on filename and metadata."""
+    # Create a signature from the PDF filename and extracted metadata
+    signature = f"{pdf_path.name}:{metadata.get('company', '')}:{metadata.get('ticker', '')}:{metadata.get('quarter', '')}:{metadata.get('year', '')}"
+    return hashlib.sha256(signature.encode("utf-8")).hexdigest()
+
+
+def is_pdf_already_processed(
+    client: weaviate.Client,
+    logger: logging.Logger,
+    *,
+    pdf_source_hash: str,
+) -> bool:
+    """Check if a PDF has already been processed by querying for its pdf_source_hash."""
+    try:
+        response = client.query.get(
+            COLLECTION_NAME,
+            ["pdf_source_hash"]
+        ).with_where({
+            "path": ["pdf_source_hash"],
+            "operator": "Equal",
+            "valueText": pdf_source_hash
+        }).with_limit(1).do()
+        
+        objects = response.get("data", {}).get("Get", {}).get(COLLECTION_NAME, [])
+        if objects:
+            logger.info("PDF already processed (pdf_source_hash=%s)", pdf_source_hash)
+            return True
+        return False
+    except Exception as exc:
+        logger.warning("Failed to check if PDF was processed: %s. Proceeding with ingestion.", exc)
+        return False
 
 
 def delete_existing_chunks(
@@ -394,6 +432,7 @@ def prepare_object(
     source_url: Optional[str],
     call_type: Optional[str],
     language: str,
+    pdf_source_hash: str,
 ) -> Dict:
     hits, score = tag_concepts(chunk)
     now = datetime.now(timezone.utc).isoformat()
@@ -414,6 +453,7 @@ def prepare_object(
         "concept_score": score,
         "created_at": now,
         "updated_at": now,
+        "pdf_source_hash": pdf_source_hash,
     }
 
 
@@ -455,6 +495,14 @@ def ingest_pdf(
         metadata.get("year"),
     )
 
+    # Generate hash for this PDF
+    pdf_source_hash = generate_pdf_source_hash(pdf_path, metadata)
+    
+    # Check if PDF has already been processed
+    if is_pdf_already_processed(client, logger, pdf_source_hash=pdf_source_hash):
+        logger.info("Skipping %s (already processed)", pdf_path.name)
+        return
+
     if config.delete_existing and any(
         metadata.get(field)
         for field in ("company", "ticker", "quarter", "year")
@@ -492,6 +540,7 @@ def ingest_pdf(
                 source_url=config.source_url,
                 call_type=config.call_type,
                 language=config.language,
+                pdf_source_hash=pdf_source_hash,
             )
             vector = embedder.embed(normalized_chunk)
             if vector_required and vector is None:
