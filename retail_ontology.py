@@ -123,7 +123,12 @@ JSON_SCHEMA_TEMPLATE = {
             "capex_plans": "",
             "dividend_policy": "",
             "share_repurchase": ""
-        }
+        },
+        "strategic_summary": "",
+        "risk_summary": "",
+        "retail_media_flag": "",
+        "supply_chain_flag": "",
+        "category_flag": ""
     }
 }
 
@@ -573,6 +578,20 @@ def comprehensive_normalize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Normalize intelligence section
         intel = data.get("intelligence", {})
 
+        # Handle case where LLM puts intelligence fields at top level instead of under "intelligence"
+        # Copy any top-level fields that belong in intelligence
+        intelligence_field_names = [
+            "executive_intent", "retail_media_investments", "supply_chain_shelf_pain_points", 
+            "category_strategy", "financial_kpis", "strategic_initiatives", "market_position",
+            "digital_transformation", "workforce_talent", "future_outlook", "risk_factors",
+            "partnerships_alliances", "capital_allocation", "latest_transcript_url", "ir_landing_page",
+            "strategic_summary", "risk_summary", "retail_media_flag", "supply_chain_flag", "category_flag"
+        ]
+        
+        for field_name in intelligence_field_names:
+            if field_name in data and data[field_name]:
+                intel[field_name] = data[field_name]
+
         # First, copy any existing executive_intent fields directly
         if "executive_intent" in intel and isinstance(intel["executive_intent"], dict):
             normalized["intelligence"]["executive_intent"].update(intel["executive_intent"])
@@ -625,7 +644,8 @@ def comprehensive_normalize_data(data: Dict[str, Any]) -> Dict[str, Any]:
         other_intel_fields = [
             "retail_media_investments", "supply_chain_shelf_pain_points", "category_strategy",
             "financial_kpis", "strategic_initiatives", "market_position", "digital_transformation",
-            "workforce_talent", "future_outlook", "risk_factors", "partnerships_alliances", "capital_allocation"
+            "workforce_talent", "future_outlook", "risk_factors", "partnerships_alliances", "capital_allocation",
+            "strategic_summary", "risk_summary", "retail_media_flag", "supply_chain_flag", "category_flag"
         ]
         for field in other_intel_fields:
             if field in intel and intel[field]:
