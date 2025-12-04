@@ -1,0 +1,34 @@
+{
+  "contact_data_map": [
+    {
+      "full_name": "Fernando Fernandez",
+      "job_title": "Chief Executive Officer"
+    },
+    {
+      "full_name": "Srinivas Phatak",
+      "job_title": "Acting Chief Financial Officer"
+    },
+    {
+      "full_name": "Jemma Spalton",
+      "job_title": "Head of Investor Relations"
+    }
+  ],
+  "account_data_map": {
+    "strategic_priority_summary": "Unilever is focused on delivering its full-year outlook for 2025, with a balance between volume and price growth. The company is prioritizing investments in its power brands, premium innovations, and digital commerce, while maintaining operational excellence and driving margin resilience.",
+    "risk_summary": "• Inflationary pressures from commodities and currency\n• Weakening economic conditions in Latin America, particularly in Brazil and Mexico\n• Uncertain macro and currency environment",
+    "retail_media_intent_flag": false,
+    "supply_chain_issues_flag": true,
+    "category_focus_flag": true,
+    "focussed_category": [
+      "Beverages",
+      "Personal Hygiene"
+    ]
+  },
+  "_metadata": {
+    "extraction_timestamp": "2025-12-04T13:58:24.627134",
+    "company": "Unilever",
+    "quarter": "Q2",
+    "year": "2025",
+    "chunks_used": 20
+  }
+}

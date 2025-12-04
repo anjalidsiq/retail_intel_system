@@ -2,13 +2,14 @@
 Delta Agent: QoQ & YoY Comparative Analysis
 
 This script performs comparative analysis between quarters to identify strategic pivots,
-tone shifts, and strategy changes in retail earnings transcripts.
+tone shifts, and strategy changes using processed intelligence outputs.
 
 Usage:
-    python delta_agent.py --company "MondelezInternational" --ticker "MDLZ" --quarter "Q3" --year 2025
+    python delta_agent.py --company "Unilever" --quarter "Q3" --year 2025
 """
 
 import argparse
+import json
 import os
 import sys
 from typing import Dict, List, Optional
@@ -17,56 +18,30 @@ from typing import Dict, List, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-import weaviate
-from weaviate.auth import AuthApiKey
 from llm.ollama_client import OllamaClient
 
 load_dotenv()
 
 class DeltaAgent:
-    """Agent for performing comparative analysis between quarters."""
+    """Agent for performing comparative analysis between quarters using processed intelligence."""
 
     def __init__(self):
-        self.client = self._init_weaviate()
         self.llm_client = OllamaClient()
 
-    def _init_weaviate(self) -> weaviate.Client:
-        """Initialize Weaviate client."""
-        url = os.getenv("WEAVIATE_URL", "http://localhost:8080")
-        api_key = os.getenv("WEAVIATE_API_KEY")
-        auth = AuthApiKey(api_key) if api_key else None
-        return weaviate.Client(url, auth_client_secret=auth, timeout_config=(5, 60))
-
-    def get_transcript_data(self, company: str, ticker: str, quarter: str, year: int) -> str:
-        """Fetch and aggregate transcript text for given parameters."""
+    def load_processed_intelligence(self, company: str, quarter: str, year: int) -> Optional[Dict]:
+        """Load processed intelligence JSON for given parameters."""
+        filename = f"{company.lower()}_{quarter.lower()}_{year}.json"
+        filepath = os.path.join("processed_intelligence", filename)
+        
+        if not os.path.exists(filepath):
+            return None
+            
         try:
-            response = self.client.query.get(
-                "RetailTranscriptChunk",
-                ["text", "page", "chunk_index"]
-            ).with_where({
-                "operator": "And",
-                "operands": [
-                    {"path": ["company"], "operator": "Equal", "valueText": company},
-                    {"path": ["ticker"], "operator": "Equal", "valueText": ticker},
-                    {"path": ["quarter"], "operator": "Equal", "valueText": quarter},
-                    {"path": ["year"], "operator": "Equal", "valueInt": year}
-                ]
-            }).with_sort([{"path": ["page"], "order": "asc"}, {"path": ["chunk_index"], "order": "asc"}]).do()
-
-            objects = response.get("data", {}).get("Get", {}).get("RetailTranscriptChunk", [])
-            if not objects:
-                return ""
-
-            # Aggregate and sort text by page and chunk index
-            texts = []
-            for obj in objects:
-                texts.append(obj.get("text", ""))
-
-            return "\n\n".join(texts)
-
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
         except Exception as e:
-            print(f"Error fetching transcript data: {e}")
-            return ""
+            print(f"Error loading {filepath}: {e}")
+            return None
 
     def get_previous_quarter(self, quarter: str, year: int) -> tuple[str, int]:
         """Get previous quarter and year."""
@@ -78,39 +53,59 @@ class DeltaAgent:
         else:
             return quarters[current_idx - 1], year
 
-    def compare_quarters(self, current_json: Dict, previous_json: Dict, same_quarter_json: Dict) -> str:
-        """Perform comparative analysis using LLM."""
+    def compare_quarters(self, current_json: Dict, previous_json: Optional[Dict], same_quarter_json: Optional[Dict]) -> str:
+        """Perform comparative analysis using LLM on processed intelligence outputs."""
+
+        # Extract key sections from current period
+        current_strategic = current_json.get("account_data_map", {}).get("strategic_priority_summary", "")
+        current_risks = current_json.get("account_data_map", {}).get("risk_summary", "")
+        current_leadership = ", ".join([f"{p['full_name']} ({p['job_title']})" for p in current_json.get("contact_data_map", [])])
+        
+        # Extract from previous quarter (if available)
+        prev_strategic = previous_json.get("account_data_map", {}).get("strategic_priority_summary", "Not available") if previous_json else "Not available"
+        prev_risks = previous_json.get("account_data_map", {}).get("risk_summary", "Not available") if previous_json else "Not available"
+        
+        # Extract from same quarter last year (if available)
+        yoy_strategic = same_quarter_json.get("account_data_map", {}).get("strategic_priority_summary", "Not available") if same_quarter_json else "Not available"
+        yoy_risks = same_quarter_json.get("account_data_map", {}).get("risk_summary", "Not available") if same_quarter_json else "Not available"
+
+        yoy_period = f"{same_quarter_json['_metadata']['quarter']} {same_quarter_json['_metadata']['year']}" if same_quarter_json else "previous year data not available"
+        yoy_header = f"{same_quarter_json['_metadata']['quarter']} {same_quarter_json['_metadata']['year']}" if same_quarter_json else "N/A"
 
         prompt = f"""
-You are a strategic analyst comparing retail earnings transcripts to identify key business pivots and shifts.
+Compare the strategic focus of {current_json['_metadata']['quarter']} {current_json['_metadata']['year']} vs {yoy_period}.
 
-Compare the strategic focus between these periods and provide a concise summary.
+**Current Period ({current_json['_metadata']['quarter']} {current_json['_metadata']['year']}):**
+Strategic Priorities: {current_strategic}
+Risk Summary: {current_risks}
+Leadership: {current_leadership}
 
-**Current Period ({current_json['quarter']} {current_json['year']}):**
-{current_json['text'][:4000]}...
+**Previous Quarter ({previous_json['_metadata']['quarter']} {previous_json['_metadata']['year']} if previous_json else 'N/A'):**
+Strategic Priorities: {prev_strategic}
+Risk Summary: {prev_risks}
 
-**Previous Quarter ({previous_json['quarter']} {previous_json['year']}):**
-{previous_json['text'][:4000]}...
-
-**Same Quarter Last Year ({same_quarter_json['quarter']} {same_quarter_json['year']}):**
-{same_quarter_json['text'][:4000]}...
+**Same Quarter Last Year ({yoy_header}):**
+Strategic Priorities: {yoy_strategic}
+Risk Summary: {yoy_risks}
 
 **Analysis Requirements:**
 
-1. **Strategic Pivots**: What topics did they STOP talking about compared to last year? What NEW topics emerged?
+Identify Pivots: What did they stop talking about? (e.g., Stopped mentioning 'Inflation', started mentioning 'Volume Growth').
 
-2. **Tone Shifts**: For key themes (Supply Chain, Inflation, Volume Growth, DTC, Retail Partners, etc.), is sentiment more positive/negative than last year?
+Tone Shift: Is the sentiment regarding 'Supply Chain' more positive or negative than last year?
 
-3. **Strategy Changes**: Have they shifted focus between channels (DTC vs Retail Partners), product categories, or geographic markets?
+Strategy Change: Have they shifted focus from 'DTC' to 'Retail Partners'?
 
-**Output Format:**
-Provide a concise summary (200-300 words) covering:
-- Key pivots identified
-- Notable tone shifts
-- Strategic direction changes
-- Business implications
+**Output:** A simple text summary field called strategic_pivot_summary with clear headings for each analysis area (200-300 words total).
 
-Focus on actionable insights for investors and competitors.
+**Identify Pivots:**
+[Analysis of what they stopped talking about vs. new topics]
+
+**Tone Shift:**
+[Analysis of sentiment changes regarding Supply Chain]
+
+**Strategy Change:**
+[Analysis of shifts from DTC to Retail Partners]
 """
 
         try:
@@ -123,62 +118,43 @@ Focus on actionable insights for investors and competitors.
         except Exception as e:
             return f"Error generating comparative analysis: {e}"
 
-    def analyze_company(self, company: str, ticker: str, quarter: str, year: int) -> Dict:
-        """Main analysis function."""
+    def analyze_company(self, company: str, quarter: str, year: int) -> Dict:
+        """Main analysis function using processed intelligence JSONs."""
 
-        # Get current transcript
-        current_text = self.get_transcript_data(company, ticker, quarter, year)
-        if not current_text:
-            return {"error": f"No data found for {company} {ticker} {quarter} {year}"}
+        # Load current period intelligence
+        current_json = self.load_processed_intelligence(company, quarter, year)
+        if not current_json:
+            return {"error": f"No processed intelligence found for {company} {quarter} {year}"}
 
-        # Get previous quarter
+        # Load previous quarter
         prev_quarter, prev_year = self.get_previous_quarter(quarter, year)
-        previous_text = self.get_transcript_data(company, ticker, prev_quarter, prev_year)
+        previous_json = self.load_processed_intelligence(company, prev_quarter, prev_year)
 
-        # Get same quarter last year
-        same_quarter_text = self.get_transcript_data(company, ticker, quarter, year - 1)
-
-        # Prepare data for comparison
-        current_data = {
-            "quarter": quarter,
-            "year": year,
-            "text": current_text
-        }
-
-        previous_data = {
-            "quarter": prev_quarter,
-            "year": prev_year,
-            "text": previous_text
-        }
-
-        same_quarter_data = {
-            "quarter": quarter,
-            "year": year - 1,
-            "text": same_quarter_text
-        }
+        # Load same quarter last year
+        same_quarter_json = self.load_processed_intelligence(company, quarter, year - 1)
 
         # Generate comparative analysis
-        strategic_pivot_summary = self.compare_quarters(current_data, previous_data, same_quarter_data)
+        strategic_pivot_summary = self.compare_quarters(current_json, previous_json, same_quarter_json)
 
         return {
             "company": company,
-            "ticker": ticker,
             "current_period": f"{quarter} {year}",
             "previous_quarter": f"{prev_quarter} {prev_year}",
             "same_quarter_last_year": f"{quarter} {year-1}",
             "strategic_pivot_summary": strategic_pivot_summary,
             "data_availability": {
-                "current": len(current_text) > 0,
-                "previous_quarter": len(previous_text) > 0,
-                "same_quarter_last_year": len(same_quarter_text) > 0
+                "current": True,
+                "previous_quarter": previous_json is not None,
+                "same_quarter_last_year": same_quarter_json is not None
             }
         }
+
+
 
 
 def main():
     parser = argparse.ArgumentParser(description="Delta Agent: QoQ & YoY Comparative Analysis")
     parser.add_argument("--company", required=True, help="Company name")
-    parser.add_argument("--ticker", required=True, help="Stock ticker")
     parser.add_argument("--quarter", required=True, help="Current quarter (Q1, Q2, Q3, Q4)")
     parser.add_argument("--year", type=int, required=True, help="Current year")
 
@@ -191,7 +167,7 @@ def main():
 
     # Run analysis
     agent = DeltaAgent()
-    result = agent.analyze_company(args.company, args.ticker, args.quarter, args.year)
+    result = agent.analyze_company(args.company, args.quarter, args.year)
 
     # Output results
     if "error" in result:
@@ -199,7 +175,7 @@ def main():
         return 1
 
     # Print summary
-    print(f"\n=== Delta Agent Analysis: {result['company']} ({result['ticker']}) ===")
+    print(f"\n=== Delta Agent Analysis: {result['company']} ===")
     print(f"Current Period: {result['current_period']}")
     print(f"Previous Quarter: {result['previous_quarter']}")
     print(f"Same Quarter Last Year: {result['same_quarter_last_year']}")

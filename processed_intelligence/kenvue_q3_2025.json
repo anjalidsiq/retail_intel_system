@@ -1,0 +1,33 @@
+{
+  "contact_data_map": [
+    {
+      "full_name": "Kirk Perry",
+      "job_title": "Chief Executive Officer"
+    },
+    {
+      "full_name": "Carlos De Jesus",
+      "job_title": "Group President, North America"
+    },
+    {
+      "full_name": "Jonathan Halvorson",
+      "job_title": "Chief Digital & Marketing Officer"
+    }
+  ],
+  "account_data_map": {
+    "strategic_priority_summary": "The company is focused on executing against its four operating priorities: leadership and capabilities, operating strategy, operating model & structure, and execution. The company has identified areas for improvement to win with consumers and operate with greater impact and agility.",
+    "risk_summary": "• inflation and other economic factors\n• interest rate and currency exchange rate fluctuations\n• tariffs and other constraints on trade\n• reduced market growth rates\n• competition, including technological advances and new products\n• challenges inherent in new product research and development\n• uncertainty of commercial success for new and existing products",
+    "retail_media_intent_flag": false,
+    "supply_chain_issues_flag": true,
+    "category_focus_flag": true,
+    "focussed_category": [
+      "Baby Care"
+    ]
+  },
+  "_metadata": {
+    "extraction_timestamp": "2025-12-04T14:40:03.670502",
+    "company": "kenvue",
+    "quarter": "Q3",
+    "year": "2025",
+    "chunks_used": 20
+  }
+}

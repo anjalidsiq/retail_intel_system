@@ -1,0 +1,34 @@
+{
+  "contact_data_map": [
+    {
+      "full_name": "Hein Schumacher",
+      "job_title": "Chief Executive Officer"
+    },
+    {
+      "full_name": "Fernando Fernandez",
+      "job_title": "Chief Financial Officer"
+    },
+    {
+      "full_name": "Jemma Spalton",
+      "job_title": "Head of Investor Relations"
+    }
+  ],
+  "account_data_map": {
+    "strategic_priority_summary": "Unilever is on track to deliver its full year 2024 outlook, with underlying sales growth expected to be within the multi-year range of 3% to 5%, driven by volume growth. The company is investing behind its brands and innovations, and tackling issues through resets and portfolio changes, as part of its Growth Action Plan.",
+    "risk_summary": "• Currency fluctuations: Currency had an adverse impact in the quarter of (2.8)%. Most major emerging market currencies depreciated against the Euro in Q3.\n• Commodity inflation: Moderate cost inflation is expected due to increases in commodity prices, which may lead to higher pricing over time.\n• Supply chain disruptions and logistics challenges: No specific mention, but the company is implementing a company-wide productivity programme.\n• Economic pressures and inflation: Weakening consumer sentiment in some markets, deflation in Brazil's fabric cleaning market, and hyper-inflationary pricing in Argentina.\n• Competitive dynamics and market shifts: Softening markets in key geographies, but Unilever has seen steady return to healthy top-line growth.",
+    "retail_media_intent_flag": false,
+    "supply_chain_issues_flag": true,
+    "category_focus_flag": true,
+    "focussed_category": [
+      "Beverages",
+      "Personal Hygiene"
+    ]
+  },
+  "_metadata": {
+    "extraction_timestamp": "2025-12-04T18:07:09.944814",
+    "company": "Unilever",
+    "quarter": "Q3",
+    "year": "2024",
+    "chunks_used": 20
+  }
+}

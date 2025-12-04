@@ -17,7 +17,6 @@ import re
 import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from difflib import get_close_matches
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,12 +30,8 @@ from ingestion.ingest_transcripts import EmbeddingProvider
 
 # Import retail ontology components
 from retail_ontology import (
-    SYSTEM_PROMPT,
-    JSON_SCHEMA_TEMPLATE,
     comprehensive_normalize_data,
     validate_extracted_data,
-    generate_summary,
-    calculate_confidence_score,
 )
 
 # ============================================================================
@@ -47,69 +42,9 @@ load_dotenv()
 
 COLLECTION_NAME = "RetailTranscriptChunk"
 DEFAULT_LIMIT = 20
-FOCUSSED_CATEGORY_OPTIONS = [
-    "Beverages",
-    "Snacks & Confectionery",
-    "Pantry Staples",
-    "Dairy & Chilled",
-    "Frozen Foods",
-    "Hair Care",
-    "Skin Care",
-    "Cosmetics",
-    "Personal Hygiene",
-    "Cleaning Supplies",
-    "Paper Goods",
-    "OTC Medication",
-    "Vitamins & Supplements",
-    "Baby Care",
-    "Pet Food",
-]
-
-# Hierarchical retail category taxonomy
-RETAIL_CATEGORY_TAXONOMY = {
-    "Food & Beverage": {
-        "Beverages": ["Coffee", "Tea", "Carbonated Soft Drinks", "Water", "Alcohol"],
-        "Snacks & Confectionery": ["Chips", "Chocolate", "Candy", "Crackers", "Nuts"],
-        "Pantry Staples": ["Spices", "Oils", "Baking", "Canned Goods", "Pasta"],
-        "Dairy & Chilled": ["Milk", "Yogurt", "Cheese", "Butter"],
-        "Frozen Foods": ["Ice Cream", "Frozen Meals", "Frozen Pizza"],
-    },
-    "Beauty & Personal Care": {
-        "Hair Care": ["Shampoo", "Conditioner", "Styling", "Color"],
-        "Skin Care": ["Face", "Body", "Sun Care", "Anti-Aging"],
-        "Cosmetics": ["Makeup", "Nails", "Tools"],
-        "Personal Hygiene": ["Deodorant", "Oral Care", "Shaving", "Bath & Body"],
-    },
-    "Home Care": {
-        "Cleaning Supplies": ["Laundry", "Dishwashing", "Surface Cleaners"],
-        "Paper Goods": ["Toilet Paper", "Paper Towels", "Tissues"],
-    },
-    "Health & Wellness": {
-        "OTC Medication": ["Pain Relief", "Allergy", "Cold & Flu"],
-        "Vitamins & Supplements": ["Multivitamins", "Protein Powder", "Minerals"],
-    },
-    "Baby & Child": {
-        "Baby Care": ["Diapers", "Wipes", "Formula", "Baby Food"],
-    },
-    "Pet Care": {
-        "Pet Food": ["Dog Food", "Cat Food", "Treats"],
-    },
-}
-
-# Optimized system prompt for the LLM
-SYSTEM_PROMPT = """You are an expert Retail Intelligence Analyst. 
-Extract structured intelligence from earnings call transcripts.
-Focus on:
-1. Executive Leadership (names and titles)
-2. Strategic priorities and focus areas
-3. Retail Media investments and intent
-4. Supply chain challenges and issues
-5. Category strategy and growth focus
-
-Return ONLY valid JSON. No explanations or markdown."""
 
 # ============================================================================
-# WEAVIATE OPERATIONS
+# LLM EXTRACTION
 # ============================================================================
 
 
@@ -117,76 +52,21 @@ def init_weaviate_client(logger: logging.Logger) -> weaviate.Client:
     """Initialize and connect to Weaviate database."""
     try:
         weaviate_url = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+        if not weaviate_url:
+            raise ValueError("WEAVIATE_URL environment variable is not set")
+
         weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
         auth = AuthApiKey(api_key=weaviate_api_key) if weaviate_api_key else None
+
         client = weaviate.Client(url=weaviate_url, auth_client_secret=auth)
         logger.info(f"✓ Connected to Weaviate at {weaviate_url}")
         return client
-    except Exception as e:
-        logger.error(f"✗ Error initializing Weaviate: {e}")
+    except ValueError as e:
+        logger.error(f"✗ Configuration error: {e}")
         raise
-
-
-def get_all_companies_from_weaviate(
-    client: weaviate.Client, logger: logging.Logger
-) -> List[str]:
-    """Retrieve all unique company names from Weaviate."""
-    try:
-        response = (
-            client.query.get(COLLECTION_NAME, ["company"])
-            .with_limit(1000)
-            .do()
-        )
-
-        companies = set()
-        for item in response["data"]["Get"][COLLECTION_NAME]:
-            if item.get("company"):
-                companies.add(item["company"])
-
-        logger.debug(f"Found {len(companies)} unique companies in database")
-        return sorted(list(companies))
     except Exception as e:
-        logger.error(f"✗ Error retrieving companies from Weaviate: {e}")
-        return []
-
-
-def extract_company_from_query(
-    query: str, available_companies: List[str], logger: logging.Logger
-) -> Optional[str]:
-    """Extract company name from query using fuzzy matching."""
-    query_lower = query.lower()
-
-    # Exact match first
-    for company in available_companies:
-        if company.lower() in query_lower:
-            logger.debug(f"Exact company match found: {company}")
-            return company
-
-    # Fuzzy match
-    query_words = set(re.findall(r"\b\w+\b", query_lower))
-    for company in available_companies:
-        company_lower = company.lower()
-        company_parts = set(re.findall(r"\b\w+\b", company_lower))
-
-        if company_parts & query_words:
-            logger.debug(f"Fuzzy match found: {company}")
-            return company
-
-        for word in query_words:
-            if len(word) > 3 and word in company_lower:
-                logger.debug(f"Substring match found: {company}")
-                return company
-
-            if len(word) > 3:
-                matches = get_close_matches(
-                    word, [company_lower], n=1, cutoff=0.8
-                )
-                if matches:
-                    logger.debug(f"Close match found: {company}")
-                    return company
-
-    logger.warning(f"Could not match company from query: {query}")
-    return None
+        logger.error(f"✗ Failed to connect to Weaviate database: {e}")
+        raise ConnectionError(f"Database connection failed: {e}") from e
 
 
 def query_weaviate(
@@ -200,6 +80,12 @@ def query_weaviate(
 ) -> List[Dict[str, Any]]:
     """Query Weaviate for transcript chunks."""
     try:
+        # Validate inputs
+        if not query_vector or len(query_vector) == 0:
+            raise ValueError("Query vector cannot be empty")
+        if limit <= 0:
+            raise ValueError("Limit must be a positive integer")
+
         # Build where conditions
         where_conditions = []
 
@@ -226,7 +112,8 @@ def query_weaviate(
                     "operator": "Equal",
                     "valueInt": year_int,
                 })
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not parse year as integer, using as string: {e}")
                 where_conditions.append({
                     "path": ["year"],
                     "operator": "Equal",
@@ -252,15 +139,30 @@ def query_weaviate(
             query_obj = query_obj.with_where(combined)
 
         query_obj = query_obj.with_limit(limit)
+
+        # Execute query
         response = query_obj.do()
 
+        # Validate response structure
+        if not response or "data" not in response or "Get" not in response["data"]:
+            raise ValueError("Invalid response structure from Weaviate")
+
         chunks = response["data"]["Get"][COLLECTION_NAME]
+        if not isinstance(chunks, list):
+            raise ValueError("Chunks data is not a list")
+
         logger.info(f"✓ Retrieved {len(chunks)} chunks from Weaviate")
         return chunks
 
-    except Exception as e:
-        logger.error(f"✗ Error querying Weaviate: {e}")
+    except ValueError as e:
+        logger.error(f"✗ Validation error in query: {e}")
         raise
+    except KeyError as e:
+        logger.error(f"✗ Unexpected response structure from Weaviate: {e}")
+        raise RuntimeError(f"Database returned unexpected data format: {e}") from e
+    except Exception as e:
+        logger.error(f"✗ Database query failed: {e}")
+        raise RuntimeError(f"Failed to query database: {e}") from e
 
 
 # ============================================================================
@@ -271,28 +173,62 @@ def query_weaviate(
 def embed_query(query: str, embedder: EmbeddingProvider, logger: logging.Logger) -> List[float]:
     """Embed the query."""
     try:
-        vector = embedder.embed(query)
+        if not query or not query.strip():
+            raise ValueError("Query cannot be empty or whitespace only")
+
+        if not embedder:
+            raise ValueError("Embedding provider not available")
+
+        vector = embedder.embed(query.strip())
+        if not vector or len(vector) == 0:
+            raise RuntimeError("Embedding provider returned empty vector")
+
         logger.debug(f"✓ Query embedded (dimension: {len(vector)})")
         return vector
+
+    except ValueError as e:
+        logger.error(f"✗ Validation error in embedding: {e}")
+        raise
     except Exception as e:
         logger.error(f"✗ Error embedding query: {e}")
-        raise
+        raise RuntimeError(f"Failed to generate embedding: {e}") from e
 
 
 def aggregate_chunks(chunks: List[Dict[str, Any]]) -> str:
     """Aggregate chunk texts into a single formatted string."""
-    aggregated = []
-    for i, chunk in enumerate(chunks, 1):
-        company = chunk.get("company", "Unknown")
-        quarter = chunk.get("quarter", "Unknown")
-        year = chunk.get("year", "Unknown")
-        page = chunk.get("page", "Unknown")
-        text = chunk.get("text", "")
+    try:
+        if not chunks:
+            raise ValueError("No chunks provided for aggregation")
 
-        header = f"[Chunk {i}] {company} - {quarter} {year} (Page {page})"
-        aggregated.append(f"{header}\n{text}")
+        if not isinstance(chunks, list):
+            raise ValueError("Chunks must be a list")
 
-    return "\n\n".join(aggregated)
+        aggregated = []
+        for i, chunk in enumerate(chunks, 1):
+            if not isinstance(chunk, dict):
+                raise ValueError(f"Chunk {i} is not a dictionary")
+
+            company = chunk.get("company", "Unknown")
+            quarter = chunk.get("quarter", "Unknown")
+            year = chunk.get("year", "Unknown")
+            page = chunk.get("page", "Unknown")
+            text = chunk.get("text", "")
+
+            if not text or not text.strip():
+                raise ValueError(f"Chunk {i} has empty or missing text content")
+
+            header = f"[Chunk {i}] {company} - {quarter} {year} (Page {page})"
+            aggregated.append(f"{header}\n{text.strip()}")
+
+        if not aggregated:
+            raise ValueError("No valid chunks found after processing")
+
+        return "\n\n".join(aggregated)
+
+    except ValueError as e:
+        raise  # Re-raise validation errors
+    except Exception as e:
+        raise RuntimeError(f"Failed to aggregate chunks: {e}") from e
 
 
 # ============================================================================
@@ -304,11 +240,19 @@ def extract_intelligence_from_text(
     text: str, logger: logging.Logger
 ) -> Dict[str, Any]:
     """Use LLM to extract structured intelligence from text using retail ontology."""
-    
-    client = OllamaClient(default_model="llama3.3:70b")
+    try:
+        if not text or not text.strip():
+            raise ValueError("Input text cannot be empty")
 
-    # Simplified prompt with escaped curly braces to avoid LangChain template issues
-    extraction_prompt = """Extract key retail intelligence from this earnings call transcript.
+        if not logger:
+            raise ValueError("Logger is required")
+
+        client = OllamaClient(default_model="llama3.3:70b")
+        if not client:
+            raise RuntimeError("Failed to initialize Ollama client")
+
+        # Simplified prompt with escaped curly braces to avoid LangChain template issues
+        extraction_prompt = """Extract key retail intelligence from this earnings call transcript.
 
 Focus on:
 1. Executive leadership (names and titles)
@@ -322,11 +266,12 @@ Return ONLY valid JSON in this format:
 {{
   "leadership": [{{"name": "Full Name", "title": "Job Title"}}],
   "strategic_summary": "comprehensive summary of key strategic priorities and focus areas",
-  "risk_summary": "comma-separated list of key risks (e.g., supply chain challenges, regulatory challenges, economic sensitivity, inflation)",
+  "risk_summary": "bullet-point list of risks from the following categories that are mentioned or implied in the transcript: Supply chain disruptions and logistics challenges, Regulatory changes and compliance requirements, Economic pressures and inflation, Competitive dynamics and market shifts, Consumer behavior changes, Raw material costs and availability, Currency fluctuations, Geopolitical events. Do not include categories that are not mentioned or implied.",
   "retail_media_flag": "true/false - does the company show intent for retail media investments?",
   "supply_chain_flag": "true/false - does the company have supply chain issues?",
   "category_flag": "true/false - does the company have category-specific focus?",
   "category_strategy": "specific retail categories like Beauty & Personal Care, Food & Beverage, Home Care, Health & Wellness (NOT strategic approaches like premiumization or digital commerce)",
+  "focussed_category": ["array of specific retail categories the company is focusing on, based on the transcript content"],
   "executive_intent": {{
     "strategic_priorities": ["priority 1", "priority 2"]
   }}
@@ -337,17 +282,18 @@ Use empty strings "" for fields not mentioned. Be specific and quote from the te
 TRANSCRIPT:
 """ + text[:12000]
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": extraction_prompt}
-    ]
+        messages = [
+            {"role": "user", "content": extraction_prompt}
+        ]
 
-    try:
         response = client.chat(
             messages,
             model="llama3.3:70b",
             temperature=0.1,
         )
+
+        if not response or not response.strip():
+            raise RuntimeError("LLM returned empty response")
 
         # Clean response
         response = response.strip()
@@ -364,25 +310,37 @@ TRANSCRIPT:
         if json_match:
             response = json_match.group(0)
 
+        if not response:
+            raise RuntimeError("No JSON found in LLM response")
+
         extracted = json.loads(response)
-        
+
+        if not isinstance(extracted, dict):
+            raise ValueError("LLM response is not a JSON object")
+
         # Use comprehensive normalization to map LLM creative fields to exact schema
         normalized_data = comprehensive_normalize_data(extracted)
-        
+
         # Validate the normalized data
         if not validate_extracted_data(normalized_data):
             logger.warning("Schema validation failed after normalization")
-        
+
         logger.info("✓ Intelligence extracted from LLM using retail ontology")
         return normalized_data
 
+    except ValueError as e:
+        logger.error(f"✗ Validation error in LLM extraction: {e}")
+        raise
     except json.JSONDecodeError as e:
         logger.error(f"✗ LLM response is not valid JSON: {e}")
         logger.debug(f"Raw response: {response[:500]}")
         raise ValueError("Invalid JSON from LLM") from e
+    except RuntimeError as e:
+        logger.error(f"✗ Runtime error in LLM extraction: {e}")
+        raise
     except Exception as e:
         logger.error(f"✗ Error during LLM extraction: {e}")
-        raise
+        raise RuntimeError(f"LLM extraction failed: {e}") from e
 
 
 # ============================================================================
@@ -392,173 +350,186 @@ TRANSCRIPT:
 
 def map_to_output_schema(extracted: Dict[str, Any]) -> Dict[str, Any]:
     """Map comprehensive retail ontology data to the required output schema."""
-    
-    # contact_data_map: array of leaders
-    contact_data_map = []
-    leadership = extracted.get("leadership", []) or []
-    for person in leadership:
-        contact_data_map.append({
-            "full_name": person.get("name", "").strip(),
-            "job_title": person.get("title", "").strip(),
-        })
+    try:
+        if not extracted or not isinstance(extracted, dict):
+            raise ValueError("Extracted data must be a non-empty dictionary")
 
-    # Extract intelligence from the comprehensive ontology
-    intelligence = extracted.get("intelligence", {}) or {}
-    
-    # Use LLM-generated strategic summary directly
-    strategic_priority_summary = intelligence.get("strategic_summary", "").strip()
-    
-    # If no strategic summary, build from available data
-    if not strategic_priority_summary:
-        strategic_parts = []
-        
-        # Executive intent (highest priority)
+        # contact_data_map: array of leaders
+        contact_data_map = []
+        leadership = extracted.get("leadership", []) or []
+        if not isinstance(leadership, list):
+            raise ValueError("Leadership data must be a list")
+
+        for person in leadership:
+            if not isinstance(person, dict):
+                continue  # Skip invalid entries
+            contact_data_map.append({
+                "full_name": person.get("name", "").strip(),
+                "job_title": person.get("title", "").strip(),
+            })
+
+        # Extract intelligence from the comprehensive ontology
+        intelligence = extracted.get("intelligence", {}) or {}
+        if not isinstance(intelligence, dict):
+            intelligence = {}
+
+        # Executive intent (used in multiple places)
         executive_intent = intelligence.get("executive_intent", {})
-        if executive_intent.get("strategic_priorities"):
-            priorities = executive_intent["strategic_priorities"]
-            if isinstance(priorities, list) and priorities:
-                strategic_parts.append(f"Priorities: {', '.join(priorities)}")
-        
-        # Category strategy
-        if intelligence.get("category_strategy"):
-            strategic_parts.append(f"Category Strategy: {intelligence['category_strategy']}")
-        
-        strategic_priority_summary = "; ".join(strategic_parts) if strategic_parts else ""
-    
-    # Use LLM-generated risk summary directly, with fallback to hardcoded logic
-    risk_summary = intelligence.get("risk_summary", "").strip()
-    
-    # If LLM didn't provide a risk summary, fall back to hardcoded logic
-    if not risk_summary:
-        risk_parts = []
-        
-        if intelligence.get("supply_chain_shelf_pain_points"):
-            risk_parts.append("supply chain challenges")
-        
-        risk_factors = intelligence.get("risk_factors", {})
-        if risk_factors.get("supply_chain_vulnerabilities"):
-            risk_parts.append("supply chain vulnerabilities")
-        if risk_factors.get("regulatory_challenges"):
-            risk_parts.append("regulatory challenges")
-        if risk_factors.get("economic_sensitivity"):
-            risk_parts.append("economic sensitivity")
-        
-        # Look for inflation mentions in various fields
-        all_text = json.dumps(intelligence, default=str).lower()
-        if "inflation" in all_text:
-            risk_parts.append("inflation")
-        
-        risk_summary = ", ".join(risk_parts) if risk_parts else ""
-    
-    # Use LLM-generated boolean flags, with fallback to hardcoded logic
-    retail_media_intent_flag = intelligence.get("retail_media_flag", "").strip().lower()
-    if retail_media_intent_flag in ["true", "false"]:
-        retail_media_intent_flag = retail_media_intent_flag == "true"
-    else:
-        # Fallback to hardcoded logic
-        retail_media_intent_flag = bool(
-            executive_intent.get("retail_media_budget") or
-            intelligence.get("retail_media_investments")
-        )
-    
-    supply_chain_issues_flag = intelligence.get("supply_chain_flag", "").strip().lower()
-    if supply_chain_issues_flag in ["true", "false"]:
-        supply_chain_issues_flag = supply_chain_issues_flag == "true"
-    else:
-        # Fallback to hardcoded logic
-        risk_factors = intelligence.get("risk_factors", {})
-        supply_chain_issues_flag = bool(
-            intelligence.get("supply_chain_shelf_pain_points") or
-            risk_factors.get("supply_chain_vulnerabilities")
-        )
-    
-    category_focus_flag = intelligence.get("category_flag", "").strip().lower()
-    if category_focus_flag in ["true", "false"]:
-        category_focus_flag = category_focus_flag == "true"
-    else:
-        # Fallback to hardcoded logic
-        category_focus_flag = bool(intelligence.get("category_strategy"))
-    
-    # Determine focussed category from category strategy
-    focussed_category = ""
-    category_text = intelligence.get("category_strategy", "").lower()
-    
-    # First try exact matches
-    for category in FOCUSSED_CATEGORY_OPTIONS:
-        if category.lower() in category_text:
-            focussed_category = category
-            break
-    
-    # If no exact match, try fuzzy keyword matching using taxonomy
-    if not focussed_category:
-        # Build comprehensive keyword mapping from taxonomy
-        category_keywords = {}
-        
-        # Stop words to filter out
-        stop_words = {'&', 'and', 'or', 'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by'}
-        
-        for sector, categories in RETAIL_CATEGORY_TAXONOMY.items():
-            for category, examples in categories.items():
-                keywords = []
-                # Add category name words (filter stop words)
-                cat_words = [word for word in category.lower().split() if word not in stop_words]
-                keywords.extend(cat_words)
-                # Add example words (filter stop words and split multi-word examples)
-                for example in examples:
-                    example_words = example.lower().split()
-                    keywords.extend([word for word in example_words if word not in stop_words])
-                category_keywords[category] = list(set(keywords))  # Remove duplicates
-        
-        # Add some additional common keywords (more specific)
-        category_keywords.update({
-            "Personal Hygiene": ["beauty", "wellbeing", "personal", "hygiene", "grooming", "bath", "body", "deodorant", "oral", "shaving"],
-            "Hair Care": ["hair", "shampoo", "conditioner", "styling", "color", "treatment"],
-            "Skin Care": ["skin", "facial", "moisturizer", "lotion", "anti-aging", "sun", "body"],
-            "Cosmetics": ["cosmetic", "makeup", "nails", "tools", "foundation", "lipstick"],
-            "Cleaning Supplies": ["cleaning", "detergent", "laundry", "dishwashing", "surface", "household"],
-            "Beverages": ["beverage", "drink", "coffee", "tea", "juice", "soft", "carbonated", "water", "alcohol"],
-            "Snacks & Confectionery": ["snack", "confectionery", "candy", "chocolate", "chips", "nuts", "crackers"],
-            "Dairy & Chilled": ["dairy", "milk", "cheese", "yogurt", "chilled", "butter", "cream"],
-            "Frozen Foods": ["frozen", "ice", "cream", "freezer", "meals", "pizza", "vegetables"],
-            "Baby Care": ["baby", "infant", "diaper", "wipes", "formula", "food", "toddler"],
-            "Pet Food": ["pet", "animal", "dog", "cat", "treats", "food", "veterinary"],
-            "OTC Medication": ["medication", "pharmacy", "pain", "relief", "allergy", "cold", "flu", "health"],
-            "Vitamins & Supplements": ["vitamin", "supplement", "nutrition", "protein", "minerals", "multivitamin"],
-        })
-        
-        # Score matches by specificity (prefer longer, more specific keywords)
-        best_match = None
-        best_score = 0
-        
-        for category, keywords in category_keywords.items():
-            matches = [kw for kw in keywords if kw in category_text]
-            if matches:
-                # Score based on number of matches and keyword specificity
-                score = len(matches) * sum(len(kw) for kw in matches)  # Prefer longer keywords
-                if score > best_score:
-                    best_score = score
-                    best_match = category
-        
-        if best_match:
-            focussed_category = best_match
-    
-    # Set category_focus_flag based on whether a focused category was actually identified
-    category_focus_flag = bool(focussed_category)
 
-    # account_data_map: strategic intelligence
-    account_data_map = {
-        "strategic_priority_summary": strategic_priority_summary,
-        "risk_summary": risk_summary,
-        "retail_media_intent_flag": retail_media_intent_flag,
-        "supply_chain_issues_flag": supply_chain_issues_flag,
-        "category_focus_flag": category_focus_flag,
-        "focussed_category": focussed_category,
-    }
+        # Use LLM-generated strategic summary directly
+        strategic_priority_summary = intelligence.get("strategic_summary", "").strip()
 
-    return {
-        "contact_data_map": contact_data_map,
-        "account_data_map": account_data_map,
-    }
+        # If no strategic summary, build from available data
+        if not strategic_priority_summary:
+            strategic_parts = []
+
+            # Executive intent (highest priority)
+            if isinstance(executive_intent, dict) and executive_intent.get("strategic_priorities"):
+                priorities = executive_intent["strategic_priorities"]
+                if isinstance(priorities, list) and priorities:
+                    strategic_parts.append(f"Priorities: {', '.join(priorities)}")
+
+            # Category strategy
+            if intelligence.get("category_strategy"):
+                strategic_parts.append(f"Category Strategy: {intelligence['category_strategy']}")
+
+            strategic_priority_summary = "; ".join(strategic_parts) if strategic_parts else ""
+
+        # Use LLM-generated risk summary directly
+        risk_summary = intelligence.get("risk_summary", "")
+        if isinstance(risk_summary, list):
+            # If LLM returns a list, join it with newlines
+            risk_summary = "\n".join(f"• {item}" if not item.startswith("•") else item for item in risk_summary)
+        elif isinstance(risk_summary, str):
+            risk_summary = risk_summary.strip()
+        else:
+            risk_summary = ""
+
+        # Use LLM-generated boolean flags, with fallback to hardcoded logic
+        retail_media_intent_flag = intelligence.get("retail_media_flag", "")
+        if isinstance(retail_media_intent_flag, str):
+            retail_media_intent_flag = retail_media_intent_flag.strip().lower()
+            if retail_media_intent_flag in ["true", "false"]:
+                retail_media_intent_flag = retail_media_intent_flag == "true"
+            else:
+                # Fallback to hardcoded logic
+                retail_media_intent_flag = bool(
+                    executive_intent.get("retail_media_budget") or
+                    intelligence.get("retail_media_investments")
+                )
+        elif isinstance(retail_media_intent_flag, bool):
+            # LLM returned boolean directly
+            pass
+        else:
+            # Fallback to hardcoded logic
+            retail_media_intent_flag = bool(
+                executive_intent.get("retail_media_budget") or
+                intelligence.get("retail_media_investments")
+            )
+
+        supply_chain_issues_flag = intelligence.get("supply_chain_flag", "")
+        if isinstance(supply_chain_issues_flag, str):
+            supply_chain_issues_flag = supply_chain_issues_flag.strip().lower()
+            if supply_chain_issues_flag in ["true", "false"]:
+                supply_chain_issues_flag = supply_chain_issues_flag == "true"
+            else:
+                # Fallback to hardcoded logic
+                risk_factors = intelligence.get("risk_factors", {})
+                supply_chain_issues_flag = bool(
+                    intelligence.get("supply_chain_shelf_pain_points") or
+                    risk_factors.get("supply_chain_vulnerabilities")
+                )
+        elif isinstance(supply_chain_issues_flag, bool):
+            # LLM returned boolean directly
+            pass
+        else:
+            # Fallback to hardcoded logic
+            risk_factors = intelligence.get("risk_factors", {})
+            supply_chain_issues_flag = bool(
+                intelligence.get("supply_chain_shelf_pain_points") or
+                risk_factors.get("supply_chain_vulnerabilities")
+            )
+
+        category_focus_flag = intelligence.get("category_flag", "")
+        if isinstance(category_focus_flag, str):
+            category_focus_flag = category_focus_flag.strip().lower()
+            if category_focus_flag in ["true", "false"]:
+                category_focus_flag = category_focus_flag == "true"
+            else:
+                # Fallback to hardcoded logic
+                category_focus_flag = bool(intelligence.get("category_strategy"))
+        elif isinstance(category_focus_flag, bool):
+            # LLM returned boolean directly
+            pass
+        else:
+            # Fallback to hardcoded logic
+            category_focus_flag = bool(intelligence.get("category_strategy"))
+
+        # Determine focussed categories from category strategy
+        focussed_categories = []
+        category_text = intelligence.get("category_strategy", "").lower()
+
+        # Check if LLM directly provided focussed_category as array
+        llm_categories = intelligence.get("focussed_category", [])
+        if isinstance(llm_categories, list) and llm_categories:
+            focussed_categories = [cat.strip() for cat in llm_categories if cat.strip()]
+        else:
+            # Fallback: Hierarchical category mapping based on retail structure
+            category_hierarchy = {
+                # Food & Beverage
+                "Beverages": ["coffee", "tea", "carbonated soft drinks", "water", "alcohol", "beverage", "drink", "soda", "juice", "energy drinks"],
+                "Snacks & Confectionery": ["chips", "chocolate", "candy", "crackers", "nuts", "snack", "confectionery", "cookies", "biscuits", "pretzels"],
+                "Pantry Staples": ["spices", "oils", "baking", "canned goods", "pasta", "rice", "flour", "sugar", "salt", "condiments"],
+                "Dairy & Chilled": ["milk", "yogurt", "cheese", "butter", "cream", "dairy", "chilled", "eggs", "margarine"],
+                "Frozen Foods": ["ice cream", "frozen meals", "frozen pizza", "frozen vegetables", "frozen", "ice cream", "popsicles"],
+
+                # Beauty & Personal Care
+                "Hair Care": ["shampoo", "conditioner", "styling", "color", "hair", "treatment", "hair dye", "gel", "spray"],
+                "Skin Care": ["face", "body", "sun care", "anti-aging", "skin", "moisturizer", "lotion", "cream", "serum", "cleanser"],
+                "Cosmetics": ["makeup", "nails", "tools", "cosmetic", "foundation", "lipstick", "mascara", "eyeshadow", "blush"],
+                "Personal Hygiene": ["deodorant", "oral care", "shaving", "bath & body", "beauty", "wellbeing", "personal", "hygiene", "toothpaste", "soap", "shower gel"],
+
+                # Home Care
+                "Cleaning Supplies": ["laundry", "dishwashing", "surface cleaners", "cleaning", "detergent", "bleach", "disinfectant"],
+                "Paper Goods": ["toilet paper", "paper towels", "tissues", "napkins", "paper", "facial tissue"],
+
+                # Health & Wellness
+                "OTC Medication": ["pain relief", "allergy", "cold & flu", "medication", "pharmacy", "pain", "headache", "fever"],
+                "Vitamins & Supplements": ["multivitamins", "protein powder", "minerals", "vitamin", "supplement", "nutrition", "dietary"],
+
+                # Baby & Child
+                "Baby Care": ["diapers", "wipes", "formula", "baby food", "baby", "infant", "diaper", "baby formula", "baby milk"],
+
+                # Pet Care
+                "Pet Food": ["dog food", "cat food", "treats", "pet", "animal", "dog", "cat", "pet food", "kibble"]
+            }
+
+            for category, keywords in category_hierarchy.items():
+                if any(keyword in category_text for keyword in keywords):
+                    focussed_categories.append(category)
+
+        # Set category_focus_flag based on whether any focused categories were identified
+        category_focus_flag = bool(focussed_categories)
+
+        # account_data_map: strategic intelligence
+        account_data_map = {
+            "strategic_priority_summary": strategic_priority_summary,
+            "risk_summary": risk_summary,
+            "retail_media_intent_flag": retail_media_intent_flag,
+            "supply_chain_issues_flag": supply_chain_issues_flag,
+            "category_focus_flag": category_focus_flag,
+            "focussed_category": focussed_categories,
+        }
+
+        return {
+            "contact_data_map": contact_data_map,
+            "account_data_map": account_data_map,
+        }
+
+    except ValueError as e:
+        raise  # Re-raise validation errors
+    except Exception as e:
+        raise RuntimeError(f"Failed to map data to output schema: {e}") from e
 
 
 # ============================================================================
@@ -590,57 +561,78 @@ def query_intelligence(
     Raises:
         ValueError: If query fails or no data found
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    try:
+        # Validate inputs
+        if not company or not company.strip():
+            raise ValueError("Company name cannot be empty")
+        if not quarter or not quarter.strip():
+            raise ValueError("Quarter cannot be empty")
+        if not year or not year.strip():
+            raise ValueError("Year cannot be empty")
+        if limit <= 0:
+            raise ValueError("Limit must be a positive integer")
 
-    logger.info(f"Querying: {company} {quarter} {year}")
+        if logger is None:
+            logger = logging.getLogger(__name__)
 
-    # Initialize clients
-    weaviate_client = init_weaviate_client(logger)
-    embedder = EmbeddingProvider(logger, True)
+        logger.info(f"Querying: {company} {quarter} {year}")
 
-    # Build query string for embedding
-    query_string = f"{company} {quarter} {year}"
+        # Initialize clients
+        weaviate_client = init_weaviate_client(logger)
+        embedder = EmbeddingProvider(logger, True)
 
-    # Embed query
-    query_vector = embed_query(query_string, embedder, logger)
+        # Build query string for embedding
+        query_string = f"{company} {quarter} {year}"
 
-    # Query Weaviate
-    chunks = query_weaviate(
-        weaviate_client,
-        query_vector,
-        company=company,
-        quarter=quarter,
-        year=year,
-        limit=limit,
-        logger=logger,
-    )
+        # Embed query
+        query_vector = embed_query(query_string, embedder, logger)
 
-    if not chunks:
-        raise ValueError(
-            f"No data found for {company} {quarter} {year} in database"
+        # Query Weaviate
+        chunks = query_weaviate(
+            weaviate_client,
+            query_vector,
+            company=company,
+            quarter=quarter,
+            year=year,
+            limit=limit,
+            logger=logger,
         )
 
-    logger.info(f"Retrieved {len(chunks)} chunks")
+        if not chunks:
+            raise ValueError(
+                f"No data found for {company} {quarter} {year} in database"
+            )
 
-    # Aggregate chunks
-    aggregated_text = aggregate_chunks(chunks)
+        logger.info(f"Retrieved {len(chunks)} chunks")
 
-    # Extract intelligence using LLM
-    extracted = extract_intelligence_from_text(aggregated_text, logger)
+        # Aggregate chunks
+        aggregated_text = aggregate_chunks(chunks)
 
-    # Map to output schema
-    output = map_to_output_schema(extracted)
-    output["_metadata"] = {
-        "extraction_timestamp": datetime.now().isoformat(),
-        "company": company,
-        "quarter": quarter,
-        "year": year,
-        "chunks_used": len(chunks),
-    }
+        # Extract intelligence using LLM
+        extracted = extract_intelligence_from_text(aggregated_text, logger)
 
-    logger.info("✓ Intelligence extraction complete")
-    return output
+        # Map to output schema
+        output = map_to_output_schema(extracted)
+        output["_metadata"] = {
+            "extraction_timestamp": datetime.now().isoformat(),
+            "company": company,
+            "quarter": quarter,
+            "year": year,
+            "chunks_used": len(chunks),
+        }
+
+        logger.info("✓ Intelligence extraction complete")
+        return output
+
+    except ValueError as e:
+        logger.error(f"✗ Validation error in query: {e}")
+        raise
+    except RuntimeError as e:
+        logger.error(f"✗ Runtime error in query: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"✗ Unexpected error in query intelligence: {e}")
+        raise RuntimeError(f"Intelligence extraction failed: {e}") from e
 
 
 # ============================================================================
@@ -650,48 +642,48 @@ def query_intelligence(
 
 def main():
     """Main CLI entry point."""
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Extract retail intelligence from earnings call transcripts"
-    )
-    parser.add_argument(
-        "--company",
-        required=True,
-        help="Company name (e.g., 'Mondelez')"
-    )
-    parser.add_argument(
-        "--quarter",
-        required=True,
-        help="Quarter (e.g., 'Q2')"
-    )
-    parser.add_argument(
-        "--year",
-        required=True,
-        help="Year (e.g., '2025')"
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=DEFAULT_LIMIT,
-        help=f"Maximum chunks to retrieve (default: {DEFAULT_LIMIT})"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose logging"
-    )
-
-    args = parser.parse_args()
-
-    # Setup logging
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-    logger = logging.getLogger(__name__)
-
     try:
+        import argparse
+
+        parser = argparse.ArgumentParser(
+            description="Extract retail intelligence from earnings call transcripts"
+        )
+        parser.add_argument(
+            "--company",
+            required=True,
+            help="Company name (e.g., 'Mondelez')"
+        )
+        parser.add_argument(
+            "--quarter",
+            required=True,
+            help="Quarter (e.g., 'Q2')"
+        )
+        parser.add_argument(
+            "--year",
+            required=True,
+            help="Year (e.g., '2025')"
+        )
+        parser.add_argument(
+            "--limit",
+            type=int,
+            default=DEFAULT_LIMIT,
+            help=f"Maximum chunks to retrieve (default: {DEFAULT_LIMIT})"
+        )
+        parser.add_argument(
+            "--verbose", "-v",
+            action="store_true",
+            help="Enable verbose logging"
+        )
+
+        args = parser.parse_args()
+
+        # Setup logging
+        logging.basicConfig(
+            level=logging.DEBUG if args.verbose else logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s"
+        )
+        logger = logging.getLogger(__name__)
+
         result = query_intelligence(
             company=args.company,
             quarter=args.quarter,
@@ -699,18 +691,28 @@ def main():
             logger=logger,
             limit=args.limit,
         )
-        
+
         # Save to file
         output_file = f"processed_intelligence/{args.company.lower()}_{args.quarter.lower()}_{args.year}.json"
         os.makedirs("processed_intelligence", exist_ok=True)
-        with open(output_file, "w") as f:
-            json.dump(result, f, indent=2)
+        with open(output_file, "w", encoding='utf-8') as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
         logger.info(f"✓ Results saved to {output_file}")
-        
+
         # Also print to stdout
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except RuntimeError as e:
+        print(f"Runtime error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user", file=sys.stderr)
+        sys.exit(130)
     except Exception as e:
-        logger.error(f"Error: {e}")
+        print(f"Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

@@ -14,15 +14,18 @@
     }
   ],
   "account_data_map": {
-    "strategic_priority_summary": "Unilever's strategic priorities include delivering strong performance in Beauty & Wellbeing and Personal Care, accelerating shift to premium and digital commerce, and improving emerging market performance. The company is also focused on outperforming markets, with a strong competitive performance in developed markets and an improved performance in emerging markets.",
-    "risk_summary": "macroeconomic pressure, supply chain challenges, regulatory challenges, economic sensitivity, inflation",
+    "strategic_priority_summary": "Unilever's strategic priorities include strengthening its portfolio with more Beauty, Wellbeing, and Personal Care products, accelerating the shift to premium and digital commerce, and delivering superior growth in anchor markets. The company is confident in its ability to continue outperforming markets, driven by strong performances in developed markets and improving trends in emerging markets.",
+    "risk_summary": "• Economic pressures and inflation: macroeconomic pressure on category growth and consumer demand in Latin America\n• Competitive dynamics and market shifts: softening in certain markets, notably Latin America\n• Consumer behavior changes: temporary shift in product formats in Deodorants\n• Supply chain disruptions and logistics challenges: none mentioned explicitly, but the company is investing in manufacturing and logistical capability for direct-to-consumer delivery",
     "retail_media_intent_flag": false,
-    "supply_chain_issues_flag": true,
+    "supply_chain_issues_flag": false,
     "category_focus_flag": true,
-    "focussed_category": "Personal Hygiene"
+    "focussed_category": [
+      "Beverages",
+      "Personal Hygiene"
+    ]
   },
   "_metadata": {
-    "extraction_timestamp": "2025-12-03T19:33:16.304686",
+    "extraction_timestamp": "2025-12-04T14:22:27.416876",
     "company": "Unilever",
     "quarter": "Q3",
     "year": "2025",
