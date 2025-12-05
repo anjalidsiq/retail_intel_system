@@ -29,5 +29,21 @@
     "quarter": "Q3",
     "year": "2025",
     "chunks_used": 20
+  },
+  "delta_analysis": {
+    "Identify Pivots:": "The company has shifted its focus in several areas: from specific competitive pressures to broader competition concerns, from supply chain disruptions to general economic factors, and towards strengthening leadership and capabilities. There's an increased emphasis on inflation and other economic factors.",
+    "Tone Shift:": "The tone regarding supply chain seems less concerning in Q3 2025, as it's no longer explicitly mentioned. The tone remains cautious regarding economic pressures and inflation.",
+    "Strategy Change:": "There's a shift from focusing on driving efficiencies and expanding margins to a more holistic approach emphasizing operational priorities and strategic growth. The emphasis on winning with consumers suggests a continued consumer-centric strategy, potentially encompassing both DTC and retail partnerships.",
+    "comparison_periods": {
+      "current": "Q3 2025",
+      "previous_quarter": "Q2 2025",
+      "same_quarter_last_year": "Q3 2024"
+    },
+    "data_availability": {
+      "current": true,
+      "previous_quarter": true,
+      "same_quarter_last_year": false
+    },
+    "analysis_timestamp": "2025-12-05T17:42:45.574685"
   }
 }

@@ -1,0 +1,41 @@
+{
+  "contact_data_map": [
+    {
+      "full_name": "Kirk L. Perry",
+      "job_title": "Interim Chief Executive Officer & Director"
+    },
+    {
+      "full_name": "Amit Banati",
+      "job_title": "Chief Financial Officer"
+    },
+    {
+      "full_name": "Sofya S. Tsinis",
+      "job_title": "Vice President -Investor Relations"
+    },
+    {
+      "full_name": "Andy Dasgupta",
+      "job_title": "Leader of Asia-Pacific region"
+    },
+    {
+      "full_name": "Michael Wondrasch",
+      "job_title": "Chief Technology and Data Officer"
+    }
+  ],
+  "account_data_map": {
+    "strategic_priority_summary": "The company is focused on driving efficiencies, getting to peer benchmark levels across the P&L, and expanding margins over time. They are also working to strengthen leadership and capabilities, optimize spend, and drive higher ROI on brand investments.",
+    "risk_summary": "• * Supply chain disruptions and logistics challenges: input cost inflation, unfavorable mix, currency, and strategic price investments\n• * Economic pressures and inflation: decline in seasonal incidences, inventory build in China\n• * Competitive dynamics and market shifts: competitive pressures in women's health in Asia-Pacific, losing share in mouthwash business in the US",
+    "retail_media_intent_flag": false,
+    "supply_chain_issues_flag": true,
+    "category_focus_flag": true,
+    "focussed_category": [
+      "Personal Hygiene"
+    ]
+  },
+  "_metadata": {
+    "extraction_timestamp": "2025-12-05T15:58:45.238573",
+    "company": "Kenvue",
+    "quarter": "Q2",
+    "year": "2025",
+    "chunks_used": 20
+  }
+}
