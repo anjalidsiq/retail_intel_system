@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
+from vault_client import load_vault_secrets
 import weaviate
 from weaviate.auth import AuthApiKey
 
-load_dotenv()
+load_vault_secrets()
 
 # Connect to Weaviate
 url = os.getenv("WEAVIATE_URL", "http://localhost:8080")

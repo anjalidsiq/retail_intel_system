@@ -27,6 +27,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+from vault_client import load_vault_secrets
 import requests
 from pypdf import PdfReader
 import weaviate
@@ -77,7 +78,7 @@ class EmbeddingProvider:
         try:
             from langchain_ollama import OllamaEmbeddings
 
-            model = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+            model = os.getenv("EMBED_MODEL", "nomic-embed-text")
             base_url = os.getenv("OLLAMA_BASE_URL")
             if not base_url:
                 raise ValueError("OLLAMA_BASE_URL is not set")
@@ -166,7 +167,7 @@ def load_environment(env_file: Optional[Path]) -> None:
     if env_file:
         load_dotenv(dotenv_path=env_file)
     else:
-        load_dotenv()
+        load_vault_secrets()
 
 
 def resolve_vectorizer_setting() -> str:
@@ -570,7 +571,7 @@ def run_ingestion(config: ScriptConfig) -> None:
     if vectorizer_setting == "none" and not embedder.enabled:
         logger.error(
             "WEAVIATE_VECTORIZER is 'none' but embeddings are not configured. "
-            "Set OLLAMA_BASE_URL/OLLAMA_EMBED_MODEL and rerun with --use-local-embeddings."
+            "Set OLLAMA_BASE_URL/EMBED_MODEL and rerun with --use-local-embeddings."
         )
         raise SystemExit(1)
 

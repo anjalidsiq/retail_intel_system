@@ -14,7 +14,7 @@
     }
   ],
   "account_data_map": {
-    "strategic_priority_summary": "Unilever's strategic priorities include strengthening its portfolio with more Beauty, Wellbeing, and Personal Care products, accelerating the shift to premium and digital commerce, and delivering superior growth in anchor markets. The company is confident in its ability to continue outperforming markets, driven by strong performances in developed markets and improving trends in emerging markets.",
+    "strategic_priority_summary": "Unilever's strategic priorities include strengthening its portfolio with more Beauty, Wellbeing, and Personal Care products, accelerating its shift to premium and digital commerce, and delivering superior growth in anchor markets. The company is confident in its ability to continue outperforming markets, driven by strong performances in developed markets and improving trends in emerging markets.",
     "risk_summary": "• Economic pressures and inflation: macroeconomic pressure on category growth and consumer demand in Latin America\n• Competitive dynamics and market shifts: softening in certain markets, notably Latin America\n• Consumer behavior changes: temporary shift in product formats in Deodorants\n• Supply chain disruptions and logistics challenges: none mentioned explicitly, but the company is investing in manufacturing and logistical capability for direct-to-consumer delivery",
     "retail_media_intent_flag": false,
     "supply_chain_issues_flag": false,
@@ -25,26 +25,10 @@
     ]
   },
   "_metadata": {
-    "extraction_timestamp": "2025-12-04T14:22:27.416876",
+    "extraction_timestamp": "2025-12-05T19:06:07.728062",
     "company": "Unilever",
     "quarter": "Q3",
     "year": "2025",
     "chunks_used": 20
-  },
-  "delta_analysis": {
-    "Identify Pivots:": "Unilever stopped talking about 'Commodity inflation' and 'Currency fluctuations', which were mentioned in Q3 2024. They also stopped mentioning 'Weakening consumer sentiment' and 'Deflation in Brazil's fabric cleaning market'. On the other hand, they started mentioning 'Accelerating the shift to premium and digital commerce' and 'Delivering superior growth in anchor markets' in Q3 2025. Additionally, 'Temporary shift in product formats in Deodorants' is a new mention in Q3 2025.",
-    "Tone Shift:": "The sentiment regarding 'Supply Chain' is more positive than last year. In Q3 2024, there was no specific mention of supply chain disruptions, but the company was implementing a company-wide productivity programme. In contrast, Q3 2025 does not explicitly mention any supply chain disruptions or challenges, and instead mentions investments in manufacturing and logistical capability for direct-to-consumer delivery, indicating a more positive tone.",
-    "Strategy Change:": "Unilever has shifted its focus from 'Volume Growth' to 'Premium and Digital Commerce'. In Q3 2024, the company was focused on delivering underlying sales growth driven by volume growth. However, in Q3 2025, the strategic priorities include accelerating the shift to premium and digital commerce, indicating a change in strategy. There is no mention of shifting focus from 'DTC' to 'Retail Partners', as DTC (direct-to-consumer) is actually being invested in for delivery capability.",
-    "comparison_periods": {
-      "current": "Q3 2025",
-      "previous_quarter": "Q2 2025",
-      "same_quarter_last_year": "Q3 2024"
-    },
-    "data_availability": {
-      "current": true,
-      "previous_quarter": true,
-      "same_quarter_last_year": true
-    },
-    "analysis_timestamp": "2025-12-05T17:39:30.133174"
   }
 }

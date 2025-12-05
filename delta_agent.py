@@ -19,9 +19,10 @@ from typing import Dict, List, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+from vault_client import load_vault_secrets
 from llm.ollama_client import OllamaClient
 
-load_dotenv()
+load_vault_secrets()
 
 class DeltaAgent:
     """Agent for performing comparative analysis between quarters using processed intelligence."""
