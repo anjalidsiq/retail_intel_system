@@ -45,5 +45,36 @@
       "same_quarter_last_year": false
     },
     "analysis_timestamp": "2025-12-05T17:42:45.574685"
+  },
+  "comprehensive_delta_analysis": {
+    "qoq_analysis": {
+      "Strategic Pivots:": "",
+      "Risk Perception:": "risk perception has shifted from focusing on specific operational challenges to broader macroeconomic and market-related risks.\",\n    \"Geographic/category risk variations\": \"The company no longer mentions specific geographic or category-related risks, such as competitive pressures in women's health in Asia-Pacific.\"\n  },\n  \"retail_media_strategy\": {\n    \"No significant changes were mentioned in the current quarter transcript regarding retail media focus or investments.\"\n  },\n  \"supply_chain_strategy\": {\n    \"OOS and inventory management focus\": \"The company is moving towards more normalized levels of working capital relative to last year, suggesting progress in addressing inventory management challenges.\",\n    \"Supply chain resilience improvements\": \"No specific mentions were made about supply chain resilience improvements, but the company's efforts to modernize and optimize its systems, processes, and technologies may contribute to improved supply chain efficiency.\"\n  },\n  \"channel_strategy\": {\n    \"Omnichannel investments\": \"No significant changes were mentioned in the current quarter transcript regarding omnichannel investments or strategy.\",\n    \"Marketplace presence and strategy\": \"The company's appointment of Carlos, a seasoned executive with experience in digital commerce, may suggest a renewed focus on marketplace presence and strategy.\"\n  },\n  \"premiumization_strategy\": {\n    \"No significant changes were mentioned in the current quarter transcript regarding premium product mix shifts or SKU rationalization progress.\"\n  },\n  \"financial_priorities\": {\n    \"Growth rate changes\": \"The company's growth rate expectations are not explicitly mentioned, but its focus on executing against its four operating priorities suggests a emphasis on operational efficiency and execution.\",\n    \"Margin target adjustments\": \"No specific margin targets were mentioned, but the company's efforts to modernize and optimize its systems, processes, and technologies may contribute to improved profitability.\"\n  },\n  \"competitive_positioning\": {\n    \"Market share trends and goals\": \"The company no longer mentions specific market share goals or trends, suggesting a shift in focus towards operational efficiency and execution.\",\n    \"Competitive intensity perception\": \"The company's risk perception has shifted from focusing on specific competitive challenges to broader macroeconomic and market-related risks.\"\n  },\n  \"technology_innovation\": {\n    \"E-commerce platform investments\": \"No significant changes were mentioned in the current quarter transcript regarding e-commerce platform investments or strategy.\",\n    \"Data platform (CDP) initiatives\": \"The company's efforts to modernize and optimize its systems, processes, and technologies may contribute to improved data management capabilities.\"\n  },\n  \"partnerships_ma\": {\n    \"M&A activity or plans\": \"No significant changes were mentioned in the current quarter transcript regarding M&A activity or plans.\",\n    \"Strategic partnerships and collaborations\": \"The company's appointment of Carlos, a seasoned executive with experience in digital commerce, may suggest a renewed focus on strategic partnerships and collaborations.\"\n  }\n}\n```\n\nNote that some sections may not have significant changes or mentions, but I've still included them to provide a comprehensive analysis.",
+      "Retail Media Strategy:": "",
+      "Supply Chain Strategy:": "",
+      "Channel Strategy:": "",
+      "Premiumization Strategy:": "",
+      "Financial Priorities:": "",
+      "Competitive Positioning:": "",
+      "Technology Innovation:": "",
+      "Partnerships & M&A:": ""
+    },
+    "yoy_analysis": {},
+    "comparison_periods": {
+      "current": "Q3 2025",
+      "previous_quarter": "Q2 2025",
+      "same_quarter_last_year": "Q3 2024"
+    },
+    "weaviate_context": {
+      "current_chunks_used": 20,
+      "qoq_chunks_used": 20,
+      "yoy_chunks_used": 0
+    },
+    "data_availability": {
+      "previous_quarter": true,
+      "same_quarter_last_year": false
+    },
+    "analysis_timestamp": "2025-12-06T17:03:40.232688",
+    "analysis_version": "comprehensive_v2_with_weaviate"
   }
 }

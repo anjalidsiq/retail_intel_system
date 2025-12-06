@@ -19,6 +19,7 @@ def home():
     return jsonify({
         "message": "Retail Intelligence System API",
         "endpoints": {
+            "/download": "POST - Download PDFs from database",
             "/ingest": "POST - Ingest transcripts (params: input_dir, use_local_embeddings, delete_existing)",
             "/extract": "POST - Extract intelligence (params: company, quarter, year)",
             "/delta": "POST - Run delta analysis (params: company, quarter, year)",
@@ -29,6 +30,23 @@ def home():
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy", "vault_loaded": True})
+
+@app.route('/download', methods=['POST'])
+def download():
+    """Download PDFs from database."""
+    cmd = [
+        sys.executable, 'data/scripts/download_pdfs.py'
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
+        return jsonify({
+            "status": "success" if result.returncode == 0 else "error",
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 @app.route('/ingest', methods=['POST'])
 def ingest():

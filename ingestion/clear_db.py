@@ -1,5 +1,10 @@
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
+
+# Add parent directory to path to import vault_client
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from vault_client import load_vault_secrets
 import weaviate
 from weaviate.auth import AuthApiKey

@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+from vault_client import load_vault_secrets
 import weaviate
 from weaviate.auth import AuthApiKey
 
@@ -38,7 +39,7 @@ from retail_ontology import (
 # CONFIGURATION & CONSTANTS
 # ============================================================================
 
-load_dotenv()
+load_vault_secrets()
 
 COLLECTION_NAME = "RetailTranscriptChunk"
 DEFAULT_LIMIT = 20

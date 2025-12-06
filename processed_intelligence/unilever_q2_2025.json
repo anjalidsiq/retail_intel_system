@@ -1,50 +1,10 @@
 {
-  "contact_data_map": [
-    {
-      "full_name": "Fernando Fernandez",
-      "job_title": "Chief Executive Officer"
-    },
-    {
-      "full_name": "Srinivas Phatak",
-      "job_title": "Acting Chief Financial Officer"
-    },
-    {
-      "full_name": "Jemma Spalton",
-      "job_title": "Head of Investor Relations"
-    }
-  ],
-  "account_data_map": {
-    "strategic_priority_summary": "Unilever is focused on delivering its full-year outlook for 2025, with a balance between volume and price growth. The company is prioritizing investments in its power brands, premium innovations, and digital commerce, while maintaining operational excellence and driving margin resilience.",
-    "risk_summary": "• Inflationary pressures from commodities and currency\n• Weakening economic conditions in Latin America, particularly in Brazil and Mexico\n• Uncertain macro and currency environment",
-    "retail_media_intent_flag": false,
-    "supply_chain_issues_flag": true,
-    "category_focus_flag": true,
-    "focussed_category": [
-      "Beverages",
-      "Personal Hygiene"
-    ]
-  },
+  "company": "Unilever",
+  "quarter": "Q2",
+  "year": 2025,
+  "contact_data_map": {},
+  "account_data_map": {},
   "_metadata": {
-    "extraction_timestamp": "2025-12-04T13:58:24.627134",
-    "company": "Unilever",
-    "quarter": "Q2",
-    "year": "2025",
-    "chunks_used": 20
-  },
-  "delta_analysis": {
-    "Identify Pivots:": "No previous data is available to compare and identify pivots. The current period's strategic priorities include delivering full-year outlook for 2025 with a balance between volume and price growth, investing in power brands, premium innovations, and digital commerce, while maintaining operational excellence and driving margin resilience.",
-    "Tone Shift:": "No previous data is available to compare the tone regarding 'Supply Chain' or any other specific area. The current period's risk summary mentions inflationary pressures, weakening economic conditions, and uncertain macro and currency environment.",
-    "Strategy Change:": "No previous data is available to determine if there has been a shift in focus from one area to another, such as from 'DTC' to 'Retail Partners'. The current period's strategic priorities emphasize investments in power brands, premium innovations, and digital commerce.",
-    "comparison_periods": {
-      "current": "Q2 2025",
-      "previous_quarter": "Q1 2025",
-      "same_quarter_last_year": "Q2 2024"
-    },
-    "data_availability": {
-      "current": true,
-      "previous_quarter": false,
-      "same_quarter_last_year": false
-    },
-    "analysis_timestamp": "2025-12-05T17:40:36.795169"
+    "created_at": "2025-12-06T17:11:06.936009"
   }
 }

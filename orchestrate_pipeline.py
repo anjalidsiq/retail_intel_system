@@ -142,26 +142,20 @@ def run_pipeline(company: str, quarter: str, year: int):
 		return 1
 
 
-def start_watcher():
-	"""Start the file watcher to monitor for new PDFs"""
-	watch_path = Path("data/transcripts")
-	watch_path.mkdir(parents=True, exist_ok=True)
+def run_download():
+	"""Run the PDF download script"""
+	logger.info("📥 Running PDF download from database...")
 
-	logger.info(f"👀 Starting PDF watcher on: {watch_path.absolute()}")
-	logger.info("📄 Expected filename format: Company_Q3_2025.pdf")
-	logger.info("🛑 Press Ctrl+C to stop\n")
+	result = subprocess.run([
+		sys.executable, os.path.join(os.getcwd(), "data/scripts/download_pdfs.py")
+	], capture_output=True, text=True, timeout=600)
 
-	event_handler = PDFWatcherHandler()
-	observer = Observer()
-	observer.schedule(event_handler, str(watch_path), recursive=False)
-	observer.start()
-
-	try:
-		observer.join()
-	except KeyboardInterrupt:
-		logger.info("\n🛑 Stopping watcher...")
-		observer.stop()
-		observer.join()
+	if result.returncode != 0:
+		logger.error(f"❌ Download failed: {result.stderr}")
+		return False
+	else:
+		logger.info("✅ Download completed")
+		return True
 
 
 def main():
@@ -172,6 +166,11 @@ def main():
 		"--run",
 		action="store_true",
 		help="Run the pipeline for specific parameters"
+	)
+	parser.add_argument(
+		"--download",
+		action="store_true",
+		help="Download PDFs from database before watching"
 	)
 	parser.add_argument(
 		"--company",
@@ -200,6 +199,12 @@ def main():
 			parser.error("--run requires --company, --quarter, and --year")
 		
 		sys.exit(run_pipeline(args.company, args.quarter, args.year))
+	elif args.download:
+		# Run download and then start watcher
+		if run_download():
+			start_watcher()
+		else:
+			sys.exit(1)
 	else:
 		# Default to watcher mode
 		start_watcher()
